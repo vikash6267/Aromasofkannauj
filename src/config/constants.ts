@@ -1,5 +1,5 @@
 
-export const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api/v1' : '/api/v1');
+export const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'https://aromasofkannauj-zuha.onrender.com/api/v1' : '/api/v1');
 
 export const MONGODB_URL = "mongodb+srv://infoinextets:VWi8V6YTnxIgESpW@cluster0.3doac7y.mongodb.net/Perfume";
 export const CLOUDINARY_CONFIG = {
