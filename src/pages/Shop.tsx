@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Sliders } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { GENDER_CATEGORIES, PERFUME_NOTES, PERFUME_TYPES } from '@/config/constants';
-import { getProducts } from '@/services/productService';
+import { productAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const Shop = () => {
@@ -28,7 +28,7 @@ const Shop = () => {
   const [category, setCategory] = useState('all');
   const [selectedNotes, setSelectedNotes] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 300]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [sortOption, setSortOption] = useState('createdAt_desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -80,28 +80,25 @@ const Shop = () => {
         sort: sortOption
       };
       
-      const result = await getProducts(params);
+      const result = await productAPI.getAll(params);
       
       if (page === 1) {
-        setProducts(result.products);
+        setProducts(result.products || []);
       } else {
-        setProducts(prev => [...prev, ...result.products]);
+        setProducts(prev => [...prev, ...(result.products || [])]);
       }
       
-      setCurrentPage(result.pagination.currentPage);
-      setTotalPages(result.pagination.totalPages);
+      if (result.pagination) {
+        setCurrentPage(result.pagination.currentPage);
+        setTotalPages(result.pagination.totalPages);
+      }
       
     } catch (error) {
       console.error('Error fetching products:', error);
       toast({
         title: "Error loading products",
-        description: "Failed to load products. Using mock data as fallback.",
+        description: "Failed to load products.",
         variant: "destructive"
-      });
-      
-      // Fallback to mock data
-      import('@/services/mockData').then(({ perfumes }) => {
-        setProducts(perfumes || []);
       });
     } finally {
       setIsLoading(false);
@@ -131,7 +128,7 @@ const Shop = () => {
     setCategory('all');
     setSelectedNotes([]);
     setSelectedTypes([]);
-    setPriceRange([0, 300]);
+    setPriceRange([0, 10000]);
     setSortOption('createdAt_desc');
   };
   
@@ -193,8 +190,8 @@ const Shop = () => {
                           <Slider
                             value={priceRange}
                             min={0}
-                            max={300}
-                            step={10}
+                            max={10000}
+                            step={100}
                             onValueChange={(value) => setPriceRange(value as [number, number])}
                             className="my-6"
                           />
@@ -310,8 +307,8 @@ const Shop = () => {
                 <Slider
                   value={priceRange}
                   min={0}
-                  max={300}
-                  step={10}
+                  max={10000}
+                  step={100}
                   onValueChange={(value) => setPriceRange(value as [number, number])}
                   className="my-6"
                 />

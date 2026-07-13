@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Layout from '@/components/layout/Layout';
-import { getUser } from '@/services/api';
 import OrderList from '@/components/user/OrderList';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '@/store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import { RootState } from '@/store';
 
 const UserProfile = () => {
-  const user = getUser();
+  const user = useSelector((state: RootState) => state.auth?.user) || JSON.parse(localStorage.getItem('perfume-user') || '{}');
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
@@ -21,12 +21,26 @@ const UserProfile = () => {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    address: user?.address || '',
   });
+
+  const [address, setAddress] = useState({
+    street: user?.address?.street || '',
+    city: user?.address?.city || '',
+    state: user?.address?.state || '',
+    zip: user?.address?.zip || '',
+    country: user?.address?.country || 'India'
+  });
+
+  const [saving, setSaving] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfile(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setAddress(prev => ({ ...prev, [name]: value }));
   };
 
   const handleLogout = () => {
@@ -34,9 +48,53 @@ const UserProfile = () => {
     navigate('/login');
   };
 
-  const handleSaveProfile = () => {
-    // Would connect to API in a real implementation
-    alert('Profile changes saved!');
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?._id) return;
+    
+    try {
+      setSaving(true);
+      import('@/services/api').then(async ({ userAPI }) => {
+        const response = await userAPI.updateProfile(user._id, {
+          name: profile.name,
+          phone: profile.phone
+        });
+        if (response.success) {
+          import('@/store/slices/authSlice').then(({ updateUser }) => {
+            dispatch(updateUser(response.user));
+          });
+          alert('Profile information saved successfully!');
+        }
+      });
+    } catch (error) {
+      console.error('Failed to save profile', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?._id) return;
+    
+    try {
+      setSaving(true);
+      import('@/services/api').then(async ({ userAPI }) => {
+        const response = await userAPI.updateAddress(user._id, address);
+        if (response.success) {
+          import('@/store/slices/authSlice').then(({ updateUser }) => {
+            dispatch(updateUser(response.user));
+          });
+          alert('Address saved successfully!');
+        }
+      });
+    } catch (error) {
+      console.error('Failed to save address', error);
+      alert('Failed to save address. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -91,8 +149,10 @@ const UserProfile = () => {
                   </div>
                   
                   <div className="flex justify-between items-center pt-4">
-                    <Button onClick={handleSaveProfile}>Save Changes</Button>
-                    <Button variant="destructive" onClick={handleLogout}>Logout</Button>
+                    <Button onClick={handleSaveProfile} disabled={saving}>
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="destructive" type="button" onClick={handleLogout}>Logout</Button>
                   </div>
                 </form>
               </CardContent>
@@ -103,29 +163,73 @@ const UserProfile = () => {
             <OrderList />
           </TabsContent>
           
-          <TabsContent value="addresses">
+        <TabsContent value="addresses">
             <Card>
               <CardHeader>
-                <CardTitle>Your Addresses</CardTitle>
-                <CardDescription>Manage your shipping addresses</CardDescription>
+                <CardTitle>Your Default Address</CardTitle>
+                <CardDescription>This address will be pre-filled at checkout</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="border rounded-md p-4">
-                    <h3 className="font-medium mb-2">Home Address</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {profile.address || '123 Main Street, Apartment 4B, New Delhi - 110001'}
-                    </p>
-                    <div className="flex space-x-2 mt-4">
-                      <Button variant="outline" size="sm">Edit</Button>
-                      <Button variant="outline" size="sm">Delete</Button>
+                <form onSubmit={handleSaveAddress} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="street">Street Address</Label>
+                      <Input 
+                        id="street" 
+                        name="street"
+                        value={address.street}
+                        onChange={handleAddressChange}
+                        placeholder="123 Main Street, Apartment 4B"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input 
+                        id="city" 
+                        name="city"
+                        value={address.city}
+                        onChange={handleAddressChange}
+                        placeholder="New Delhi"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Input 
+                        id="state" 
+                        name="state"
+                        value={address.state}
+                        onChange={handleAddressChange}
+                        placeholder="Delhi"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="zip">ZIP / Postal Code</Label>
+                      <Input 
+                        id="zip" 
+                        name="zip"
+                        value={address.zip}
+                        onChange={handleAddressChange}
+                        placeholder="110001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Input 
+                        id="country" 
+                        name="country"
+                        value={address.country}
+                        onChange={handleAddressChange}
+                        disabled
+                      />
                     </div>
                   </div>
                   
-                  <Button className="w-full" variant="outline">
-                    Add New Address
-                  </Button>
-                </div>
+                  <div className="pt-4">
+                    <Button type="submit" disabled={saving}>
+                      {saving ? 'Saving...' : 'Save Default Address'}
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>

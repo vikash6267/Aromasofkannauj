@@ -12,7 +12,11 @@ import {
   removeCoupon
 } from '@/store/slices/cartSlice';
 import { RootState } from '@/store';
-import { coupons } from '@/services/mockData';
+const coupons = [
+  { code: 'WELCOME10', discountPercentage: 10, minPurchase: 500, isActive: true },
+  { code: 'FESTIVAL20', discountPercentage: 20, minPurchase: 1500, isActive: true },
+  { code: 'LUXURY25', discountPercentage: 25, minPurchase: 3000, isActive: true }
+];
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -147,44 +151,7 @@ const CartDrawer: React.FC = () => {
           )}
         </div>
 
-        {/* Coupon Code */}
-        {items.length > 0 && (
-          <div className="p-4 border-t">
-            {couponCode ? (
-              <div className="flex items-center justify-between bg-secondary/60 p-2 rounded-md">
-                <div>
-                  <p className="text-sm font-medium">Coupon: {couponCode}</p>
-                  <p className="text-xs text-muted-foreground">{couponDiscount}% off</p>
-                </div>
-                <button 
-                  onClick={handleCouponRemove}
-                  className="text-sm text-destructive hover:underline"
-                >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex space-x-2">
-                  <Input
-                    type="text"
-                    placeholder="Enter coupon code"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    className="flex-grow"
-                  />
-                  <Button 
-                    variant="outline" 
-                    onClick={handleCouponApply}
-                  >
-                    Apply
-                  </Button>
-                </div>
-                {couponError && <p className="text-xs text-destructive">{couponError}</p>}
-              </div>
-            )}
-          </div>
-        )}
+
 
         {/* Summary */}
         {items.length > 0 && (
@@ -195,12 +162,7 @@ const CartDrawer: React.FC = () => {
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
               
-              {couponDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount</span>
-                  <span>-₹{discount.toFixed(2)}</span>
-                </div>
-              )}
+
               
               <div className="flex justify-between font-medium text-lg pt-2 border-t">
                 <span>Total</span>

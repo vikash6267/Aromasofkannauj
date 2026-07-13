@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginStart, loginSuccess, loginFailure } from '@/store/slices/authSlice';
-import { users } from '@/services/mockData';
 import { RootState } from '@/store';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { API_URL } from '@/config/constants';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -17,31 +17,57 @@ const LoginForm: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     dispatch(loginStart());
     
-    // Mock authentication - in a real app, this would be an API call
-    setTimeout(() => {
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        const { password: _, ...userWithoutPassword } = user;
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
         dispatch(loginSuccess({ 
-          user: userWithoutPassword, 
-          token: 'mock-jwt-token' 
+          user: data.user, 
+          token: data.token 
         }));
         
-        if (user.role === 'admin') {
+        toast({
+          title: "Success",
+          description: data.message || "Logged in successfully",
+        });
+
+        if (data.user.role === 'admin') {
           navigate('/admin');
         } else {
           navigate('/');
         }
       } else {
-        dispatch(loginFailure('Invalid email or password'));
+        dispatch(loginFailure(data.message || 'Invalid email or password'));
+        toast({
+          title: "Error",
+          description: data.message || "Invalid email or password",
+          variant: "destructive",
+        });
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Login error:", error);
+      dispatch(loginFailure('Something went wrong. Please try again.'));
+      toast({
+        title: "Error",
+        description: "Network error. Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -113,17 +139,6 @@ const LoginForm: React.FC = () => {
         </p>
       </div>
       
-      <div className="mt-8 pt-6 border-t text-center text-sm">
-        <p className="text-muted-foreground">
-          For demo purposes, use:
-        </p>
-        <p className="text-muted-foreground">
-          Customer: customer@example.com / customer123
-        </p>
-        <p className="text-muted-foreground">
-          Admin: admin@example.com / admin123
-        </p>
-      </div>
     </div>
   );
 };

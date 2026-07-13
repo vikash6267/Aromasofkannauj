@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/config/constants';
 
 const RegisterForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -17,7 +17,7 @@ const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
@@ -28,17 +28,43 @@ const RegisterForm: React.FC = () => {
     
     setIsLoading(true);
     
-    // Mock registration - in a real app, this would be an API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      toast({
-        title: "Registration successful!",
-        description: "Your account has been created. Please log in.",
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
       });
-      
-      navigate('/login');
-    }, 1500);
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Registration successful!",
+          description: data.message || "Your account has been created. Please log in.",
+        });
+        
+        navigate('/login');
+      } else {
+        setError(data.message || 'Registration failed');
+        toast({
+          title: "Error",
+          description: data.message || "Failed to register",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError('Something went wrong. Please try again.');
+      toast({
+        title: "Error",
+        description: "Network error. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

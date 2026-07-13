@@ -23,7 +23,16 @@ const loadCartFromStorage = (): CartItem[] => {
   if (typeof window === 'undefined') return [];
   
   const savedCart = localStorage.getItem(STORAGE_KEYS.CART);
-  return savedCart ? JSON.parse(savedCart) : [];
+  if (!savedCart) return [];
+  
+  try {
+    const parsed = JSON.parse(savedCart);
+    // Filter out old hardcoded data that doesn't have MongoDB ObjectIds
+    // MongoDB ObjectIds are 24 character hex strings
+    return parsed.filter((item: CartItem) => item.id && item.id.length >= 24);
+  } catch (e) {
+    return [];
+  }
 };
 
 // Save cart to localStorage

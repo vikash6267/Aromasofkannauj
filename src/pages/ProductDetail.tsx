@@ -13,7 +13,8 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
-import { perfumes } from '@/services/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { productAPI } from '@/services/api';
 import { addItem } from '@/store/slices/cartSlice';
 import {
   Tabs,
@@ -27,33 +28,54 @@ import ProductGrid from '@/components/product/ProductGrid';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const product = perfumes.find(p => p.id === id);
   const dispatch = useDispatch();
   const { toast } = useToast();
   
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState('');
+
+  const { data: productResp, isLoading } = useQuery({
+    queryKey: ['product', id],
+    queryFn: () => productAPI.getById(id!),
+    enabled: !!id
+  });
+
+  const product = productResp?.product;
   
-  // Get similar products (same category or notes)
-  const similarProducts = product
-    ? perfumes
-        .filter(p => p.id !== product.id && 
-          (p.category === product.category || 
-           p.notes.some(note => product.notes.includes(note))))
-        .slice(0, 4)
-    : [];
+  // Get similar products (same category)
+  const { data: similarResp } = useQuery({
+    queryKey: ['similarProducts', product?.category],
+    queryFn: () => productAPI.getAll({ category: product?.category, limit: 5 }),
+    enabled: !!product?.category
+  });
+
+  const similarProducts = similarResp?.products?.filter((p: any) => p._id !== id).slice(0, 4) || [];
 
   useEffect(() => {
     // Set default selected size and image
-    if (product) {
+    if (product && product.sizes && product.sizes.length > 0) {
       setSelectedSize(product.sizes[0].size);
+    }
+    if (product && product.images && product.images.length > 0) {
       setSelectedImage(product.images[0]);
-      
-      // Scroll to top when product changes
+    }
+    
+    // Scroll to top when product changes
+    if (product) {
       window.scrollTo(0, 0);
     }
   }, [product]);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container-custom py-12 text-center">
+          <p>Loading product...</p>
+        </div>
+      </Layout>
+    );
+  }
   
   if (!product) {
     return (
@@ -82,7 +104,7 @@ const ProductDetail = () => {
     if (!selectedSizeInfo) return;
     
     dispatch(addItem({
-      id: product.id,
+      id: product._id,
       name: product.name,
       price: selectedSizeInfo.price,
       quantity,

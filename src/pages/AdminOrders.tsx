@@ -9,7 +9,8 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { orders, users } from '@/services/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { orderAPI, userAPI } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Eye } from 'lucide-react';
@@ -32,14 +33,29 @@ const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   
+  const queryClient = useQueryClient();
+  const { data: ordersResp, isLoading: ordersLoading } = useQuery({ queryKey: ['adminOrders'], queryFn: () => orderAPI.getAll() });
+  const { data: usersResp, isLoading: usersLoading } = useQuery({ queryKey: ['adminUsers'], queryFn: () => userAPI.getAll() });
+
+  const updateOrderMutation = useMutation({
+    mutationFn: (data: {id: string, status: string}) => orderAPI.update(data.id, { status: data.status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      setSelectedOrder(null);
+    }
+  });
+
+  const orders = ordersResp?.orders || [];
+  const users = usersResp?.users || [];
+
   // Add safety checks
   const safeOrders = Array.isArray(orders) ? orders : [];
   const safeUsers = Array.isArray(users) ? users : [];
   
   // Filter orders based on search and status
   const filteredOrders = safeOrders.filter(order => {
-    const matchesSearch = order?.id?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    const matchesStatus = !statusFilter || order?.status === statusFilter;
+    const matchesSearch = order?._id?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const matchesStatus = !statusFilter || statusFilter === 'all' || order?.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -57,9 +73,11 @@ const AdminOrders = () => {
     });
   };
   
-  const getCustomerName = (userId: string) => {
+  const getCustomerName = (userId: any) => {
     if (!userId) return 'Unknown Customer';
-    const user = safeUsers.find(u => u.id === userId);
+    // If populated
+    if (userId.name) return userId.name;
+    const user = safeUsers.find(u => u._id === userId);
     return user ? user.name : 'Unknown Customer';
   };
   
@@ -110,11 +128,11 @@ const AdminOrders = () => {
             </TableHeader>
             <TableBody>
               {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell>
+                <TableRow key={order._id}>
+                  <TableCell className="font-medium">ORD-{order._id.substring(order._id.length - 6).toUpperCase()}</TableCell>
                   <TableCell>{getCustomerName(order.userId)}</TableCell>
                   <TableCell>{formatDate(order.createdAt)}</TableCell>
-                  <TableCell>₹{order.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell>₹{(order.totalAmount || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <span className={`inline-block px-2 py-1 rounded-full text-xs ${
                       order.status === 'delivered'
@@ -154,7 +172,7 @@ const AdminOrders = () => {
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Order Details: #{selectedOrder?.id}</DialogTitle>
+            <DialogTitle>Order Details: ORD-{selectedOrder?._id.substring(selectedOrder?._id.length - 6).toUpperCase()}</DialogTitle>
           </DialogHeader>
           
           {selectedOrder && (
@@ -164,7 +182,7 @@ const AdminOrders = () => {
                   <h3 className="font-medium mb-2">Customer Information</h3>
                   <div className="bg-gray-50 p-4 rounded-md">
                     <p><strong>Name:</strong> {getCustomerName(selectedOrder.userId)}</p>
-                    <p><strong>Email:</strong> {users.find(u => u.id === selectedOrder.userId)?.email || 'N/A'}</p>
+                    <p><strong>Email:</strong> {selectedOrder.userId?.email || users.find(u => u._id === selectedOrder.userId)?.email || 'N/A'}</p>
                     <p><strong>Order Date:</strong> {formatDate(selectedOrder.createdAt)}</p>
                   </div>
                 </div>
@@ -189,9 +207,23 @@ const AdminOrders = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(selectedOrder.products || selectedOrder.items || []).map((item: any, index: number) => (
+                    {(selectedOrder.products || []).map((item: any, index: number) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">{item.name || `Product #${index+1}`}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-secondary rounded overflow-hidden mr-3">
+                              <img 
+                                src={item.productId?.images?.[0] || 'https://via.placeholder.com/150'} 
+                                alt={item.productId?.name || 'Product'} 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div>
+                              <p className="font-medium">{item.productId?.name || item.name || `Product #${index+1}`}</p>
+                              <p className="text-xs text-muted-foreground">Size: {item.size || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell>₹{item.price?.toFixed(2) || '0.00'}</TableCell>
                         <TableCell>{item.quantity || 1}</TableCell>
                         <TableCell>₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}</TableCell>
@@ -206,7 +238,7 @@ const AdminOrders = () => {
                   <h3 className="font-medium mb-2">Order Status</h3>
                   <Select 
                     defaultValue={selectedOrder.status}
-                    // In a real app, this would update the status
+                    onValueChange={(val) => setSelectedOrder({...selectedOrder, status: val})}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -226,7 +258,7 @@ const AdminOrders = () => {
                   <div className="bg-gray-50 p-4 rounded-md">
                     <p><strong>Method:</strong> {selectedOrder.paymentMethod || 'Credit Card'}</p>
                     <p><strong>Status:</strong> {selectedOrder.paymentStatus || 'Paid'}</p>
-                    <p><strong>Total:</strong> ₹{selectedOrder.totalAmount.toFixed(2)}</p>
+                    <p><strong>Total:</strong> ₹{selectedOrder.totalAmount?.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -235,8 +267,8 @@ const AdminOrders = () => {
                 <Button variant="outline" onClick={() => setSelectedOrder(null)}>
                   Close
                 </Button>
-                <Button>
-                  Update Order
+                <Button onClick={() => updateOrderMutation.mutate({ id: selectedOrder._id, status: selectedOrder.status })}>
+                  {updateOrderMutation.isPending ? 'Updating...' : 'Update Order'}
                 </Button>
               </div>
             </div>

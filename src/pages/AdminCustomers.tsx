@@ -9,7 +9,8 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { users, orders } from '@/services/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { userAPI, orderAPI } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Mail, ShoppingBag } from 'lucide-react';
@@ -18,11 +19,17 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 const AdminCustomers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Filter customers only (not admins)
-  const customers = users.filter(user => user.role === 'customer');
+  const { data: usersResp, isLoading: usersLoading } = useQuery({ queryKey: ['adminUsers'], queryFn: () => userAPI.getAll() });
+  const { data: ordersResp, isLoading: ordersLoading } = useQuery({ queryKey: ['adminOrders'], queryFn: () => orderAPI.getAll() });
+
+  const users = usersResp?.users || [];
+  const orders = ordersResp?.orders || [];
+
+  // Filter customers only (role === 'user')
+  const customers = users.filter((user: any) => user.role === 'user');
   
   // Further filter based on search
-  const filteredCustomers = customers.filter(customer => {
+  const filteredCustomers = customers.filter((customer: any) => {
     return (
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -31,13 +38,19 @@ const AdminCustomers = () => {
   
   // Calculate customer metrics
   const getCustomerOrderCount = (userId: string) => {
-    return orders.filter(order => order.userId === userId).length;
+    return orders.filter((order: any) => {
+      const orderUserId = typeof order.userId === 'string' ? order.userId : order.userId?._id;
+      return orderUserId === userId;
+    }).length;
   };
   
   const getCustomerSpend = (userId: string) => {
     return orders
-      .filter(order => order.userId === userId)
-      .reduce((total, order) => total + order.totalAmount, 0);
+      .filter((order: any) => {
+        const orderUserId = typeof order.userId === 'string' ? order.userId : order.userId?._id;
+        return orderUserId === userId;
+      })
+      .reduce((total: number, order: any) => total + order.totalAmount, 0);
   };
   
   const getInitials = (name: string) => {
@@ -84,14 +97,20 @@ const AdminCustomers = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCustomers.map((customer) => {
-                const orderCount = getCustomerOrderCount(customer.id);
-                const totalSpent = getCustomerSpend(customer.id);
-                // Use a default date for all customers since createdAt doesn't exist in the user type
-                const joinedDate = new Date().toISOString();
+              {usersLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    Loading customers...
+                  </TableCell>
+                </TableRow>
+              ) : filteredCustomers.map((customer: any) => {
+                const orderCount = getCustomerOrderCount(customer._id);
+                const totalSpent = getCustomerSpend(customer._id);
+                // Use createdAt from DB if available
+                const joinedDate = customer.createdAt || new Date().toISOString();
                 
                 return (
-                  <TableRow key={customer.id}>
+                  <TableRow key={customer._id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-9 w-9">

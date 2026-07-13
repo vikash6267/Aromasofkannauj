@@ -22,7 +22,7 @@ import {
 import { GENDER_CATEGORIES } from '@/config/constants';
 import AdminProductDialog from '@/components/admin/AdminProductDialog';
 import { useToast } from '@/hooks/use-toast';
-import { getProducts, deleteProduct } from '@/services/productService';
+import { productAPI } from '@/services/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const AdminProducts = () => {
@@ -43,7 +43,7 @@ const AdminProducts = () => {
   // Fetch products with react-query
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-products', params],
-    queryFn: () => getProducts(params),
+    queryFn: () => productAPI.getAll(params),
   });
   
   // Handle search with debounce
@@ -70,7 +70,7 @@ const AdminProducts = () => {
   const handleDeleteProduct = async (productId: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
       try {
-        await deleteProduct(productId);
+        await productAPI.delete(productId);
         toast({
           title: "Product deleted",
           description: "The product has been successfully deleted.",

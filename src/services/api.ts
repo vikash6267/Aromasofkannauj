@@ -113,7 +113,7 @@ export const productAPI = {
     sort?: string;
   } = {}) => {
     try {
-      const response = await api.get('/products', { params });
+      const response = await api.get('/product/getAll', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -122,7 +122,7 @@ export const productAPI = {
   
   getById: async (id: string) => {
     try {
-      const response = await api.get(`/products/${id}`);
+      const response = await api.get(`/product/get/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -131,7 +131,7 @@ export const productAPI = {
   
   create: async (productData: any) => {
     try {
-      const response = await api.post('/products', productData);
+      const response = await api.post('/product/create', productData);
       return response.data;
     } catch (error) {
       throw error;
@@ -140,7 +140,7 @@ export const productAPI = {
   
   update: async (id: string, productData: any) => {
     try {
-      const response = await api.put(`/products/${id}`, productData);
+      const response = await api.put(`/product/update/${id}`, productData);
       return response.data;
     } catch (error) {
       throw error;
@@ -149,7 +149,7 @@ export const productAPI = {
   
   delete: async (id: string) => {
     try {
-      const response = await api.delete(`/products/${id}`);
+      const response = await api.delete(`/product/delete/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -160,7 +160,16 @@ export const productAPI = {
 export const orderAPI = {
   getAll: async (filters = {}) => {
     try {
-      const response = await api.get('/orders', { params: filters });
+      const response = await api.get('/order/getAll', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  getUserOrders: async (userId: string) => {
+    try {
+      const response = await api.get(`/order/user/${userId}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -169,7 +178,7 @@ export const orderAPI = {
   
   getById: async (id: string) => {
     try {
-      const response = await api.get(`/orders/${id}`);
+      const response = await api.get(`/order/get/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -178,7 +187,7 @@ export const orderAPI = {
   
   create: async (orderData: any) => {
     try {
-      const response = await api.post('/orders', orderData);
+      const response = await api.post('/order/create', orderData);
       return response.data;
     } catch (error) {
       throw error;
@@ -187,7 +196,7 @@ export const orderAPI = {
   
   update: async (id: string, orderData: any) => {
     try {
-      const response = await api.put(`/orders/${id}`, orderData);
+      const response = await api.put(`/order/update/${id}`, orderData);
       return response.data;
     } catch (error) {
       throw error;
@@ -198,7 +207,7 @@ export const orderAPI = {
 export const userAPI = {
   getAll: async (params = {}) => {
     try {
-      const response = await api.get('/users', { params });
+      const response = await api.get('/auth/getAll', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -207,7 +216,8 @@ export const userAPI = {
   
   getById: async (id: string) => {
     try {
-      const response = await api.get(`/users/${id}`);
+      // NOTE: backend might not have get user by ID right now
+      const response = await api.get(`/auth/get/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -216,7 +226,25 @@ export const userAPI = {
   
   update: async (id: string, userData: any) => {
     try {
-      const response = await api.put(`/users/${id}`, userData);
+      const response = await api.put(`/auth/update/${id}`, userData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  updateAddress: async (id: string, addressData: any) => {
+    try {
+      const response = await api.put(`/auth/update-address/${id}`, { address: addressData });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  updateProfile: async (id: string, profileData: any) => {
+    try {
+      const response = await api.put(`/auth/update-profile/${id}`, profileData);
       return response.data;
     } catch (error) {
       throw error;

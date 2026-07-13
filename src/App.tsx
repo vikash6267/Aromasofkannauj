@@ -24,6 +24,11 @@ import NotFound from "./pages/NotFound";
 import About from "./components/home/About";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import UserOrders from "./pages/UserOrders";
+import Checkout from "./pages/Checkout";
+import InformationPage from "./pages/InformationPage";
 
 const queryClient = new QueryClient();
 
@@ -39,10 +44,18 @@ const App = () => (
             <Route path="/product/:id" element={<ProductDetail />} />
             
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/shipping" element={<InformationPage />} />
+            <Route path="/faq" element={<InformationPage />} />
+            <Route path="/privacy" element={<InformationPage />} />
+            <Route path="/terms" element={<InformationPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/orders" element={<UserOrders />} />
             <Route path="/order/:id" element={<OrderDetails />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/orders" element={<AdminOrders />} />

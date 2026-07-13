@@ -8,7 +8,8 @@ import {
   Package,
   AlertCircle
 } from 'lucide-react';
-import { orders, perfumes, users } from '@/services/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { productAPI, orderAPI, userAPI } from '@/services/api';
 import {
   Card,
   CardContent,
@@ -18,12 +19,24 @@ import {
 } from "@/components/ui/card";
 
 const Dashboard: React.FC = () => {
+  const { data: productsResp, isLoading: loadingProducts } = useQuery({ queryKey: ['adminProducts'], queryFn: () => productAPI.getAll() });
+  const { data: ordersResp, isLoading: loadingOrders } = useQuery({ queryKey: ['adminOrders'], queryFn: () => orderAPI.getAll() });
+  const { data: usersResp, isLoading: loadingUsers } = useQuery({ queryKey: ['adminUsers'], queryFn: () => userAPI.getAll() });
+
+  if (loadingProducts || loadingOrders || loadingUsers) {
+    return <div className="py-12 text-center">Loading dashboard data...</div>;
+  }
+
+  const perfumes = productsResp?.products || [];
+  const orders = ordersResp?.orders || [];
+  const users = usersResp?.users || [];
+
   // Calculate statistics
   const totalProducts = perfumes.length;
   const totalOrders = orders.length;
-  const totalCustomers = users.filter(u => u.role === 'customer').length;
-  const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-  const lowStockProducts = perfumes.filter(p => p.stock < 15).length;
+  const totalCustomers = users.filter((u: any) => u.role === 'user').length;
+  const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
+  const lowStockProducts = perfumes.filter((p: any) => p.stock < 15).length;
   
   // Cards data
   const cards = [
@@ -127,16 +140,16 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {recentOrders.map((order) => {
-                  const customer = users.find(u => u.id === order.userId);
+                {recentOrders.map((order: any) => {
+                  const customer = order.userId;
                   const date = new Date(order.createdAt).toLocaleDateString();
                   
                   return (
-                    <tr key={order.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-2">{order.id}</td>
+                    <tr key={order._id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-2">ORD-{order._id.substring(order._id.length - 6).toUpperCase()}</td>
                       <td className="py-3 px-2">{customer?.name || 'Unknown'}</td>
                       <td className="py-3 px-2">{date}</td>
-                      <td className="py-3 px-2">₹{order.totalAmount.toFixed(2)}</td>
+                      <td className="py-3 px-2">₹{(order.totalAmount || 0).toFixed(2)}</td>
                       <td className="py-3 px-2">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           order.status === 'delivered' 

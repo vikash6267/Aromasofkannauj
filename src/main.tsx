@@ -6,7 +6,7 @@ import './index.css'
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import {store} from './store';
-import { connectToDatabase, seedInitialProducts } from './utils/db';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Create a client
@@ -19,12 +19,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Initialize database connection and seed data
-connectToDatabase().then(() => {
-  seedInitialProducts();
-}).catch(error => {
-  console.error('Failed to initialize database:', error);
-});
+
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
