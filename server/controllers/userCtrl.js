@@ -143,7 +143,7 @@ const forgotPasswordCtrl = async (req, res) => {
         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
         await user.save();
         
-        const clientUrl = process.env.CLIENT_URL || 'http://localhost:8080';
+        const clientUrl = process.env.CLIENT_URL || 'https://www.aromasofkannauj.com';
         const url = `${clientUrl}/reset-password/${token}`;
         
         console.log(url)
