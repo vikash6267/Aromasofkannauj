@@ -84,13 +84,35 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           // Support both MongoDB _id and regular id
           const productId = product._id?.toString() || product.id || '';
           
+          // Handle stringified images from backend
+          let imageUrl = '/placeholder.svg';
+          if (product.images && product.images.length > 0) {
+            if (typeof product.images[0] === 'string' && product.images[0].startsWith('[')) {
+              try {
+                const parsed = JSON.parse(product.images[0]);
+                imageUrl = parsed[0] || '/placeholder.svg';
+              } catch (e) {
+                imageUrl = product.images[0] || '/placeholder.svg';
+              }
+            } else if (typeof product.images === 'string') {
+              try {
+                const parsed = JSON.parse(product.images as string);
+                imageUrl = parsed[0] || '/placeholder.svg';
+              } catch (e) {
+                imageUrl = product.images || '/placeholder.svg';
+              }
+            } else {
+              imageUrl = product.images[0] || '/placeholder.svg';
+            }
+          }
+          
           return (
             <ProductCard
               key={productId}
               id={productId}
               name={product.name}
               price={product.price}
-              image={product.images?.[0] || '/placeholder.svg'}
+              image={imageUrl}
               category={product.category}
               rating={product.rating}
               featured={product.featured}

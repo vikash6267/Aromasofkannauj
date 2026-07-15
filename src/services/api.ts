@@ -49,21 +49,28 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = getToken();
+    console.log('[API Request]', config.method?.toUpperCase(), config.url, 'Token present:', !!token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    console.error('[API Request Error]', error);
     return Promise.reject(error);
   }
 );
 
 // Handle token expiration
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('[API Response]', response.config.url, response.status);
+    return response;
+  },
   (error) => {
+    console.error('[API Error Response]', error.config?.url, error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
+      console.warn('[API 401 Unauthorized] Token expired or invalid. Redirecting to login...');
       // Token expired or invalid
       removeToken();
       removeUser();
@@ -253,19 +260,26 @@ export const userAPI = {
 };
 
 export const uploadAPI = {
-  uploadImage: async (file: File) => {
+  uploadImages: async (files: File[]) => {
     try {
+      console.log('[uploadAPI] Starting multiple image upload for files:', files.length);
       const formData = new FormData();
-      formData.append('image', file);
       
-      const response = await api.post('/upload/image', formData, {
+      files.forEach(file => {
+        formData.append('thumbnail', file);
+      });
+      
+      console.log('[uploadAPI] Sending POST request to /image/multi');
+      const response = await api.post('/image/multi', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
       
+      console.log('[uploadAPI] Upload successful:', response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[uploadAPI] Upload failed:', error.response?.status, error.response?.data);
       throw error;
     }
   }

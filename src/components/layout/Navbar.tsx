@@ -82,6 +82,9 @@ const Navbar: React.FC = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/orders">My Orders</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/wishlist">My Wishlist</Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
@@ -194,6 +197,13 @@ const Navbar: React.FC = () => {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       My Orders
+                    </Link>
+                    <Link 
+                      to="/wishlist" 
+                      className="px-4 py-2 hover:bg-muted rounded-md transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My Wishlist
                     </Link>
                     {isAdmin && (
                       <Link 

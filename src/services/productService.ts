@@ -22,17 +22,19 @@ export const createProduct = async (productData: any, imageFiles: File[]) => {
       ...productData,
       price: Number(productData.price),
       stock: productData.stock ? Number(productData.stock) : 0,
-      images: JSON.stringify(imageUrls),
+      images: JSON.stringify(imageUrls.length > 0 ? imageUrls : (productData.images || [])),
       notes: JSON.stringify(productData.notes || []),
       sizes: JSON.stringify(productData.sizes || []),
       rating: 0,
       reviewCount: 0
     };
     
+    console.log('[productService] Calling productAPI.create with:', newProduct);
     const result = await productAPI.create(newProduct);
+    console.log('[productService] createProduct successful:', result);
     return result;
-  } catch (error) {
-    console.error('Error creating product:', error);
+  } catch (error: any) {
+    console.error('[productService] Error creating product:', error.response?.status, error.response?.data, error);
     throw error;
   }
 };
@@ -76,10 +78,12 @@ export const updateProduct = async (id: string, productData: any, newImageFiles?
       sizes: JSON.stringify(productData.sizes || [])
     };
     
+    console.log('[productService] Calling productAPI.update with:', payload);
     const updatedProduct = await productAPI.update(id, payload);
+    console.log('[productService] updateProduct successful:', updatedProduct);
     return updatedProduct;
-  } catch (error) {
-    console.error('Error updating product:', error);
+  } catch (error: any) {
+    console.error('[productService] Error updating product:', error.response?.status, error.response?.data, error);
     throw error;
   }
 };

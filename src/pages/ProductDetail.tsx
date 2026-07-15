@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { 
   ChevronRight,
   ShoppingCart, 
@@ -15,7 +16,8 @@ import {
 import Layout from '@/components/layout/Layout';
 import { useQuery } from '@tanstack/react-query';
 import { productAPI } from '@/services/api';
-import { addItem } from '@/store/slices/cartSlice';
+import { addItem, toggleCart } from '@/store/slices/cartSlice';
+import { addToWishlist, removeFromWishlist } from '@/store/slices/wishlistSlice';
 import {
   Tabs,
   TabsContent,
@@ -30,6 +32,9 @@ const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch();
   const { toast } = useToast();
+  
+  const wishlistItems = useSelector((state: RootState) => state.wishlist.items);
+  const cartItems = useSelector((state: RootState) => state.cart.items);
   
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -53,12 +58,28 @@ const ProductDetail = () => {
   const similarProducts = similarResp?.products?.filter((p: any) => p._id !== id).slice(0, 4) || [];
 
   useEffect(() => {
-    // Set default selected size and image
-    if (product && product.sizes && product.sizes.length > 0) {
-      setSelectedSize(product.sizes[0].size);
+    // Parse sizes if it's a string
+    let parsedSizes = product?.sizes || [];
+    if (typeof parsedSizes === 'string') {
+      try { parsedSizes = JSON.parse(parsedSizes); } catch(e) { parsedSizes = []; }
+    } else if (parsedSizes.length > 0 && typeof parsedSizes[0] === 'string') {
+      try { parsedSizes = JSON.parse(parsedSizes[0]); } catch(e) { parsedSizes = []; }
     }
-    if (product && product.images && product.images.length > 0) {
-      setSelectedImage(product.images[0]);
+    
+    // Parse images if it's a string
+    let parsedImages = product?.images || [];
+    if (typeof parsedImages === 'string') {
+      try { parsedImages = JSON.parse(parsedImages); } catch(e) { parsedImages = [parsedImages]; }
+    } else if (parsedImages.length > 0 && typeof parsedImages[0] === 'string' && parsedImages[0].startsWith('[')) {
+      try { parsedImages = JSON.parse(parsedImages[0]); } catch(e) { parsedImages = parsedImages; }
+    }
+
+    // Set default selected size and image
+    if (parsedSizes && parsedSizes.length > 0) {
+      setSelectedSize(parsedSizes[0].size);
+    }
+    if (parsedImages && parsedImages.length > 0) {
+      setSelectedImage(parsedImages[0]);
     }
     
     // Scroll to top when product changes
@@ -93,23 +114,61 @@ const ProductDetail = () => {
     );
   }
   
-  const selectedSizeInfo = product.sizes.find(s => s.size === selectedSize);
+  // Parse sizes safely for rendering
+  let parsedSizes = product.sizes || [];
+  if (typeof parsedSizes === 'string') {
+    try { parsedSizes = JSON.parse(parsedSizes); } catch(e) { parsedSizes = []; }
+  } else if (parsedSizes.length > 0 && typeof parsedSizes[0] === 'string') {
+    try { parsedSizes = JSON.parse(parsedSizes[0]); } catch(e) { parsedSizes = []; }
+  }
+  
+  // Parse images safely for rendering
+  let parsedImages = product.images || [];
+  if (typeof parsedImages === 'string') {
+    try { parsedImages = JSON.parse(parsedImages); } catch(e) { parsedImages = [parsedImages]; }
+  } else if (parsedImages.length > 0 && typeof parsedImages[0] === 'string' && parsedImages[0].startsWith('[')) {
+    try { parsedImages = JSON.parse(parsedImages[0]); } catch(e) { parsedImages = parsedImages; }
+  }
+
+  const selectedSizeInfo = parsedSizes.find((s: any) => s.size === selectedSize);
   const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity >= 1 && newQuantity <= product.stock) {
+    if (newQuantity >= 1 && newQuantity <= (product.stock || 99)) {
       setQuantity(newQuantity);
     }
   };
   
+  const isInWishlist = wishlistItems.some(item => item.id === (product._id || product.id));
+
+  const toggleWishlist = () => {
+    const productId = product._id || product.id;
+    if (isInWishlist) {
+      dispatch(removeFromWishlist(productId));
+      toast({ 
+        title: "Removed from Wishlist", 
+        description: `${product.name} removed from your wishlist.` 
+      });
+    } else {
+      dispatch(addToWishlist({
+        id: productId,
+        name: product.name,
+        price: selectedSizeInfo?.price || product.price,
+        image: selectedImage || '/placeholder.svg'
+      }));
+      toast({ 
+        title: "Added to Wishlist", 
+        description: `${product.name} added to your wishlist.` 
+      });
+    }
+  };
+
   const handleAddToCart = () => {
-    if (!selectedSizeInfo) return;
-    
     dispatch(addItem({
-      id: product._id,
+      id: product._id || product.id,
       name: product.name,
-      price: selectedSizeInfo.price,
+      price: selectedSizeInfo?.price || product.price,
       quantity,
-      size: selectedSize,
-      image: product.images[0]
+      size: selectedSize || 'Default',
+      image: selectedImage || '/placeholder.svg'
     }));
     
     toast({
@@ -162,15 +221,15 @@ const ProductDetail = () => {
           <div className="space-y-4">
             <div className="aspect-square rounded-lg overflow-hidden bg-white border">
               <img 
-                src={selectedImage} 
+                src={selectedImage || '/placeholder.svg'} 
                 alt={product.name} 
                 className="w-full h-full object-contain"
               />
             </div>
             
-            {product.images.length > 1 && (
+            {parsedImages.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {product.images.map((image, index) => (
+                {parsedImages.map((image: string, index: number) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(image)}
@@ -214,11 +273,7 @@ const ProductDetail = () => {
               </div>
               
               <p className="text-2xl font-medium mb-4">
-                ₹{selectedSizeInfo?.price.toFixed(2)}
-              </p>
-              
-              <p className="text-muted-foreground">
-                {product.description}
+                ₹{selectedSizeInfo?.price ? selectedSizeInfo.price.toFixed(2) : (product.price ? product.price.toFixed(2) : '0.00')}
               </p>
             </div>
             
@@ -245,24 +300,26 @@ const ProductDetail = () => {
               </div>
               
               {/* Size Selection */}
-              <div>
-                <h3 className="text-sm font-medium mb-2">Size</h3>
-                <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size.size}
-                      onClick={() => setSelectedSize(size.size)}
-                      className={`px-4 py-2 border rounded-md text-sm ${
-                        selectedSize === size.size
-                          ? 'border-primary bg-primary text-white'
-                          : 'border-gray-300 hover:border-primary'
-                      }`}
-                    >
-                      {size.size} - ₹{size.price.toFixed(2)}
-                    </button>
-                  ))}
+              {parsedSizes && parsedSizes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Size</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {parsedSizes.map((size: any) => (
+                      <button
+                        key={size.size}
+                        onClick={() => setSelectedSize(size.size)}
+                        className={`px-4 py-2 border rounded-md text-sm ${
+                          selectedSize === size.size
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-gray-300 hover:border-primary'
+                        }`}
+                      >
+                        {size.size} - ₹{size.price.toFixed(2)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               
               {/* Quantity */}
               <div>
@@ -281,7 +338,7 @@ const ProductDetail = () => {
                   <button
                     onClick={() => handleQuantityChange(quantity + 1)}
                     className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-r-md"
-                    disabled={quantity >= product.stock}
+                    disabled={quantity >= (product.stock || 99)}
                   >
                     +
                   </button>
@@ -291,19 +348,32 @@ const ProductDetail = () => {
             
             {/* Actions */}
             <div className="flex flex-wrap gap-4">
-              <Button 
-                className="flex-1 gap-2" 
-                onClick={handleAddToCart}
-              >
-                <ShoppingCart size={18} />
-                Add to Cart
+              {cartItems.some(item => item.id === (product._id || product.id) && item.size === (selectedSize || 'Default')) ? (
+                <Button 
+                  className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white" 
+                  onClick={() => dispatch(toggleCart())}
+                >
+                  <ShoppingCart size={18} />
+                  Go to Cart
+                </Button>
+              ) : (
+                <Button 
+                  className="flex-1 gap-2" 
+                  onClick={handleAddToCart}
+                >
+                  <ShoppingCart size={18} />
+                  Add to Cart
+                </Button>
+              )}
+              
+              <Button variant="outline" size="icon" onClick={toggleWishlist}>
+                <Heart size={18} fill={isInWishlist ? "currentColor" : "none"} className={isInWishlist ? "text-red-500" : ""} />
               </Button>
               
-              <Button variant="outline" size="icon">
-                <Heart size={18} />
-              </Button>
-              
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                toast({ title: "Link Copied", description: "Product link copied to clipboard." });
+              }}>
                 <Share2 size={18} />
               </Button>
             </div>
